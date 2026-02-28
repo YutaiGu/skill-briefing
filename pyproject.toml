@@ -1,0 +1,6 @@
+[project]
+name = "briefing"
+version = "0.1.0"
+
+[project.scripts]
+briefing = "main:main"

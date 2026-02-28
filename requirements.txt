@@ -1,0 +1,5 @@
+numpy
+moviepy
+yt-dlp
+sqlalchemy
+faster_whisper
