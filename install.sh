@@ -5,6 +5,7 @@ REPO_URL="${REPO_URL:-https://github.com/YutaiGu/skill-briefing.git}"
 INSTALL_DIR="${INSTALL_DIR:-$PWD/skill-briefing}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 VENV_DIR="$INSTALL_DIR/.venv"
+PYTHON_BIN="${PYTHON_BIN:-python3.12}"
 
 log() {
   printf "[briefing-install] %s\n" "$1"
@@ -28,32 +29,44 @@ install_deps_linux() {
   if require_cmd apt-get; then
     sudo apt-get update
     if [ "$ffmpeg_needed" -eq 1 ]; then
-      sudo apt-get install -y git curl python3 python3-venv ffmpeg
+      sudo apt-get install -y git curl python3.12 python3.12-venv ffmpeg
     else
-      sudo apt-get install -y git curl python3 python3-venv
+      sudo apt-get install -y git curl python3.12 python3.12-venv
+    fi
+    if ! require_cmd "$PYTHON_BIN"; then
+      echo "python3.12 not found after install. Please install Python 3.12 manually."
+      exit 1
     fi
     return
   fi
 
   if require_cmd dnf; then
     if [ "$ffmpeg_needed" -eq 1 ]; then
-      sudo dnf install -y git curl python3 python3-virtualenv ffmpeg
+      sudo dnf install -y git curl python3.12 ffmpeg
     else
-      sudo dnf install -y git curl python3 python3-virtualenv
+      sudo dnf install -y git curl python3.12
+    fi
+    if ! require_cmd "$PYTHON_BIN"; then
+      echo "python3.12 not found after install. Please install Python 3.12 manually."
+      exit 1
     fi
     return
   fi
 
   if require_cmd yum; then
     if [ "$ffmpeg_needed" -eq 1 ]; then
-      sudo yum install -y git curl python3 ffmpeg
+      sudo yum install -y git curl python3.12 ffmpeg
     else
-      sudo yum install -y git curl python3
+      sudo yum install -y git curl python3.12
+    fi
+    if ! require_cmd "$PYTHON_BIN"; then
+      echo "python3.12 not found after install. Please install Python 3.12 manually."
+      exit 1
     fi
     return
   fi
 
-  echo "Unsupported Linux package manager. Install manually: git curl python3 python3-venv ffmpeg"
+  echo "Unsupported Linux package manager. Install manually: git curl python3.12 python3.12-venv ffmpeg"
   exit 1
 }
 
@@ -66,9 +79,15 @@ install_deps_macos() {
   brew update
   if ffmpeg_already_installed; then
     log "Detected existing ffmpeg, skip ffmpeg package install"
-    brew install git python
+    brew install git python@3.12
   else
-    brew install git python ffmpeg
+    brew install git python@3.12 ffmpeg
+  fi
+
+  local brew_py
+  brew_py="$(brew --prefix python@3.12)/bin/python3.12"
+  if [ -x "$brew_py" ]; then
+    PYTHON_BIN="$brew_py"
   fi
 }
 
@@ -102,7 +121,7 @@ sync_repo() {
 
 setup_python_env() {
   log "Creating virtual environment"
-  python3 -m venv "$VENV_DIR"
+  "$PYTHON_BIN" -m venv "$VENV_DIR"
 
   log "Installing Python dependencies"
   "$VENV_DIR/bin/pip" install -U pip setuptools wheel
