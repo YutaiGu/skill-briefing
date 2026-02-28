@@ -5,6 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "briefing"
 version = "0.1.0"
+dependencies = [
+  "sqlalchemy",
+  "yt-dlp",
+  "moviepy",
+  "faster-whisper",
+]
 
 [project.scripts]
 briefing = "main:main"
