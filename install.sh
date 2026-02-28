@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/YutaiGu/skill-briefing.git}"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/briefing}"
+INSTALL_DIR="${INSTALL_DIR:-$PWD/skill-briefing}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 VENV_DIR="$INSTALL_DIR/.venv"
 
@@ -14,20 +14,42 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
+ffmpeg_already_installed() {
+  require_cmd ffmpeg
+}
+
 install_deps_linux() {
+  local ffmpeg_needed=1
+  if ffmpeg_already_installed; then
+    ffmpeg_needed=0
+    log "Detected existing ffmpeg, skip ffmpeg package install"
+  fi
+
   if require_cmd apt-get; then
     sudo apt-get update
-    sudo apt-get install -y git curl python3 python3-venv ffmpeg
+    if [ "$ffmpeg_needed" -eq 1 ]; then
+      sudo apt-get install -y git curl python3 python3-venv ffmpeg
+    else
+      sudo apt-get install -y git curl python3 python3-venv
+    fi
     return
   fi
 
   if require_cmd dnf; then
-    sudo dnf install -y git curl python3 python3-virtualenv ffmpeg
+    if [ "$ffmpeg_needed" -eq 1 ]; then
+      sudo dnf install -y git curl python3 python3-virtualenv ffmpeg
+    else
+      sudo dnf install -y git curl python3 python3-virtualenv
+    fi
     return
   fi
 
   if require_cmd yum; then
-    sudo yum install -y git curl python3 ffmpeg
+    if [ "$ffmpeg_needed" -eq 1 ]; then
+      sudo yum install -y git curl python3 ffmpeg
+    else
+      sudo yum install -y git curl python3
+    fi
     return
   fi
 
@@ -42,7 +64,12 @@ install_deps_macos() {
   fi
 
   brew update
-  brew install git python ffmpeg
+  if ffmpeg_already_installed; then
+    log "Detected existing ffmpeg, skip ffmpeg package install"
+    brew install git python
+  else
+    brew install git python ffmpeg
+  fi
 }
 
 install_deps() {
@@ -63,8 +90,12 @@ sync_repo() {
     log "Updating existing repo in $INSTALL_DIR"
     git -C "$INSTALL_DIR" pull
   else
+    if [ -e "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null || true)" ]; then
+      echo "INSTALL_DIR exists and is not a git repo: $INSTALL_DIR"
+      echo "Use an empty directory or pass INSTALL_DIR=/path/to/dir"
+      exit 1
+    fi
     log "Cloning repo to $INSTALL_DIR"
-    rm -rf "$INSTALL_DIR"
     git clone "$REPO_URL" "$INSTALL_DIR"
   fi
 }
