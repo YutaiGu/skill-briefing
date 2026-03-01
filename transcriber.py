@@ -9,7 +9,7 @@ import time
 from moviepy import AudioFileClip
 from multiprocessing import Pool, cpu_count
 
-from config import DATA_DIR, api_model, TRANSCRIBER_LIMIT, POOL_NUM
+from config import DATA_DIR, api_model, TRANSCRIBER_LIMIT, POOL_NUM, OUTPUT_DIR, TEMPORARY_DIR
 from db import get_untranscribed, update_entries, entry_to_payload, payload_to_entry
 
 _MODEL = None
@@ -20,7 +20,6 @@ def one_transcriber(payload):
         payload = Video_Processing(payload)
         payload['transcribed'] = 1  # Mark only after final success
         payload['summarized'] = 1
-        payload['pushed'] = 1
         return payload
     except Exception as e:
         print(f"Error from one_transcriber: {e}")
@@ -153,10 +152,10 @@ def Video_Processing(payload):
     cut_line = "\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n"
 
     # create necessary files
-    temporary_dir = (DATA_DIR / "temporary" / filename).as_posix()
+    temporary_dir = (TEMPORARY_DIR / filename).as_posix()
     Path(temporary_dir).mkdir(parents=True, exist_ok=True)
 
-    output_dir = DATA_DIR / "output" / filename
+    output_dir = OUTPUT_DIR / filename
     output_dir.mkdir(parents=True, exist_ok=True)
 
     whisper_path = (output_dir / "whisper.txt").as_posix()

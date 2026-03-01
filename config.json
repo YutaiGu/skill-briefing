@@ -3,18 +3,9 @@
   "UPDATE_LIMIT": 2,
   "POOL_NUM": 1,
   "TRANSCRIBER_LIMIT": null,
-  "SUMMARIZER_LIMIT": null,
-  "PUSHER_LIMIT": 1,
-  "PUSH_TO": "LocalFile",
-  "DOWNLOAD_INTERVAL": 21600,
-  "PROCESS_INTERVAL": 600,
-  "PUSHER_INTERVAL": 600,
   "ENTRIES_LIMIT": 2,
   "SOURCE_URLS": [
     "https://www.youtube.com/@Value-Investing/videos"
   ],
-  "whisper_model": "small",
-  "summarize_model": "gpt-4.1-nano",
-  "translate_model": "gpt-4o",
-  "COMPRESS_LEVEl": "100"
+  "whisper_model": "small"
 }

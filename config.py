@@ -3,22 +3,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-# Dir
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 AUDIO_DIR = DATA_DIR / "audio"
-PROMPT_DIR = DATA_DIR / "prompts"
-OUTPUT_DIR = DATA_DIR / "output"
+OUTPUT_DIR = BASE_DIR / "output"
 TEMPORARY_DIR = DATA_DIR / "temporary"
-REPORT_DIR = DATA_DIR / "reports"
 PENDING_FILE = DATA_DIR / ".pending.json"
-CONFIG_FILE = BASE_DIR / "config.txt"  # secret env
-_LEGACY_CONFIG_FILE = DATA_DIR / "config.txt"
 CONFIG_JSON = BASE_DIR / "config.json"
 _LEGACY_CONFIG_JSON = BASE_DIR / "backend" / "data" / "config.json"
-DB_URL = f"sqlite:///{(DATA_DIR / 'db.sqlite3').as_posix()}"  # SQLite
+DB_URL = f"sqlite:///{(DATA_DIR / 'db.sqlite3').as_posix()}"
 
-# load configuration
 if not CONFIG_JSON.exists() and _LEGACY_CONFIG_JSON.exists():
     CONFIG_JSON = _LEGACY_CONFIG_JSON
 
@@ -30,124 +24,33 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to read config.json: {CONFIG_JSON}") from e
 
-READ_LANGUAGE = _cfg["READ_LANGUAGE"]
-UPDATE_LIMIT = int(_cfg["UPDATE_LIMIT"])
-TRANSCRIBER_LIMIT = _cfg["TRANSCRIBER_LIMIT"]
-SUMMARIZER_LIMIT = _cfg["SUMMARIZER_LIMIT"]
-PUSHER_LIMIT = int(_cfg["PUSHER_LIMIT"])
-PUSH_TO = str(_cfg.get("PUSH_TO", "ntfy"))
-DOWNLOAD_INTERVAL = int(_cfg["DOWNLOAD_INTERVAL"])
-PROCESS_INTERVAL = int(_cfg["PROCESS_INTERVAL"])
-PUSHER_INTERVAL = int(_cfg["PUSHER_INTERVAL"])
-POOL_NUM = int(_cfg["POOL_NUM"])
-COMPRESS_LEVEl = int(_cfg["COMPRESS_LEVEl"])
-ENTRIES_LIMIT = f"1-{int(_cfg['ENTRIES_LIMIT'])}"  # special: "1-x"
-SOURCE_URLS = [str(x).strip() for x in _cfg.get("SOURCE_URLS", []) if str(x).strip()]
+if not isinstance(_cfg, dict):
+    raise RuntimeError(f"Invalid config.json format (expected object): {CONFIG_JSON}")
 
-# load secret env
-def load_config(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
 
-    data = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        data[k.strip()] = v.strip()
-    return data
+def _get(name: str, default):
+    return _cfg.get(name, default)
 
-if not CONFIG_FILE.exists() and _LEGACY_CONFIG_FILE.exists():
-    CONFIG_FILE = _LEGACY_CONFIG_FILE
 
-_secrets = load_config(CONFIG_FILE)
-
-SERVER3_KEY = _secrets.get("SERVER3_KEY", None)
-NTFY_SERVER = _secrets.get("NTFY_SERVER", None)
-
-# configuration
-api_info = {
-    "api_key": _secrets.get("API_KEY", ""),
-    "url_redirect": _secrets.get("API_URL", ""),
-}
+UPDATE_LIMIT = int(_get("UPDATE_LIMIT", 2))
+POOL_NUM = int(_get("POOL_NUM", 1))
+TRANSCRIBER_LIMIT = _get("TRANSCRIBER_LIMIT", None)
+if TRANSCRIBER_LIMIT is not None:
+    TRANSCRIBER_LIMIT = int(TRANSCRIBER_LIMIT)
+DOWNLOAD_INTERVAL = int(_get("DOWNLOAD_INTERVAL", 21600))
+PROCESS_INTERVAL = int(_get("PROCESS_INTERVAL", 600))
+ENTRIES_LIMIT = f"1-{int(_get('ENTRIES_LIMIT', 2))}"
+SOURCE_URLS = [str(x).strip() for x in _get("SOURCE_URLS", []) if str(x).strip()]
 
 api_model = {
-    "whisper_model": _cfg["whisper_model"],
-    "summarize_model": _cfg["summarize_model"],
-    "translate_model": _cfg["translate_model"],
+    "whisper_model": str(_get("whisper_model", "small")),
 }
-
-# regular information
-model_info = {
-    "gpt-4o-mini": {
-        "model": "gpt-4o-mini",
-        "max_input": 2048,
-        "max_output": 4096,
-        "input_price": 0,
-        "output_price": 0,
-    },
-    "gpt-3.5-turbo": {
-        "model": "gpt-3.5-turbo",
-        "max_input": 16385,
-        "max_output": 4096,
-        "input_price": 0.0035,
-        "output_price": 0.0035,
-    },
-    "gpt-4o": {
-        "model": "gpt-4o",
-        "max_input": 10000,
-        "max_output": 16384,
-        "input_price": 0.0175,
-        "output_price": 0.0175,
-    },
-    "gpt-4.1-nano": {
-        "model": "gpt-4.1-nano",
-        "max_input": 1000000,
-        "max_output": 32000,
-        "input_price": 0.0028,
-        "output_price": 0.0028,
-    },
-}
-
-def load_prompt(name: str) -> str:
-    path = PROMPT_DIR / f"{name}.txt"
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8")
-
-model_para = {
-    "system_content": {
-        "inspect": load_prompt("inspect"),
-        "summarize": load_prompt("summarize"),
-        "outline_trace": load_prompt("outline_trace"),
-        "brief": load_prompt("brief"),
-        "additional": "",
-    },
-    "temperature": 0.1,
-    "presence_penalty": -0.2,
-}
-
 
 def check_config() -> tuple[bool, list[str], list[str]]:
-    # dirs
-    for d in [
-        DATA_DIR,
-        AUDIO_DIR,
-        PROMPT_DIR,
-        OUTPUT_DIR,
-        TEMPORARY_DIR,
-        REPORT_DIR,
-    ]:
+    for d in [DATA_DIR, AUDIO_DIR, OUTPUT_DIR, TEMPORARY_DIR]:
         d.mkdir(parents=True, exist_ok=True)
-    
-    # files (create if missing)
+
     if not PENDING_FILE.exists():
         PENDING_FILE.write_text("{}", encoding="utf-8")
-    if not CONFIG_FILE.exists():
-        CONFIG_FILE.write_text("", encoding="utf-8")
-    if not CONFIG_JSON.exists():
-        CONFIG_JSON.parent.mkdir(parents=True, exist_ok=True)
-        CONFIG_JSON.write_text("{}", encoding="utf-8")
-    
+
     return True, [], []

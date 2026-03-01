@@ -138,13 +138,43 @@ EOF
   chmod +x "$BIN_DIR/briefing"
 }
 
+ensure_path() {
+  export PATH="$BIN_DIR:$PATH"
+
+  local line="export PATH=\"$BIN_DIR:\$PATH\""
+  local profiles=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile")
+
+  for profile in "${profiles[@]}"; do
+    if [ ! -f "$profile" ]; then
+      continue
+    fi
+    if grep -Fq "$line" "$profile"; then
+      return
+    fi
+  done
+
+  local target="$HOME/.profile"
+  if [ -n "${SHELL:-}" ] && [[ "$SHELL" == *"zsh"* ]]; then
+    target="$HOME/.zshrc"
+  elif [ -n "${SHELL:-}" ] && [[ "$SHELL" == *"bash"* ]]; then
+    target="$HOME/.bashrc"
+  fi
+
+  touch "$target"
+  printf "\n%s\n" "$line" >> "$target"
+  log "Added PATH entry to $target"
+}
+
+verify_install() {
+  "$VENV_DIR/bin/python" -c "import main; print('briefing import ok')" >/dev/null
+  if ! command -v briefing >/dev/null 2>&1; then
+    echo "Failed to resolve briefing in PATH after install."
+    exit 1
+  fi
+}
+
 print_done() {
   log "Installed successfully."
-  if ! echo ":$PATH:" | grep -q ":$BIN_DIR:"; then
-    echo
-    echo "Add this to your shell profile:"
-    echo "export PATH=\"$BIN_DIR:\$PATH\""
-  fi
   echo
   echo "Run: briefing"
 }
@@ -154,6 +184,8 @@ main() {
   sync_repo
   setup_python_env
   install_launcher
+  ensure_path
+  verify_install
   print_done
 }
 
