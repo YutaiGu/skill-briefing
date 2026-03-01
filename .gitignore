@@ -9,6 +9,7 @@ output/
 # Local configs / secrets
 .env
 .env.*
+SKILL.md
 
 # IDE
 .idea/

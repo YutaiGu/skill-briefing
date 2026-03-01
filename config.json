@@ -1,5 +1,4 @@
 {
-  "READ_LANGUAGE": "chinese",
   "UPDATE_LIMIT": 2,
   "POOL_NUM": 1,
   "TRANSCRIBER_LIMIT": null,
