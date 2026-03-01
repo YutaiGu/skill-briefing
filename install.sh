@@ -166,7 +166,7 @@ ensure_path() {
 }
 
 verify_install() {
-  "$VENV_DIR/bin/python" -c "import importlib.util; p='$INSTALL_DIR/main.py'; s=importlib.util.spec_from_file_location('main', p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)" >/dev/null
+  "$VENV_DIR/bin/python" -c "import sys; sys.path.insert(0, '$INSTALL_DIR'); import main" >/dev/null
   if ! command -v briefing >/dev/null 2>&1; then
     echo "Failed to resolve briefing in PATH after install."
     exit 1
