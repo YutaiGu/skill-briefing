@@ -163,7 +163,7 @@ def Video_Processing(payload):
 
     # Clear the contents
     with open(whisper_path, "w", encoding="utf-8") as whisper_file:
-        whisper_file.write(f"{filename} at {start_time}:{cut_line}")
+        pass
 
     with open(history_path, "w", encoding="utf-8") as history_file:
         history_file.write(f"{filename} at {start_time}:{cut_line}")
