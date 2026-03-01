@@ -3,9 +3,10 @@ set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/YutaiGu/skill-briefing.git}"
 INSTALL_DIR="${INSTALL_DIR:-$PWD/skill-briefing}"
-BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
+BIN_DIR="${BIN_DIR:-/usr/local/bin}"
 VENV_DIR="$INSTALL_DIR/.venv"
 PYTHON_BIN="${PYTHON_BIN:-python3.12}"
+LAUNCHER_PATH=""
 
 log() {
   printf "[briefing-install] %s\n" "$1"
@@ -129,19 +130,51 @@ setup_python_env() {
 }
 
 install_launcher() {
-  mkdir -p "$BIN_DIR"
-  cat > "$BIN_DIR/briefing" <<EOF
+  local target_dir="$BIN_DIR"
+  local target_path="$target_dir/briefing"
+  local tmpfile
+
+  tmpfile="$(mktemp)"
+  cat > "$tmpfile" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 exec "$VENV_DIR/bin/python" "$INSTALL_DIR/main.py" "\$@"
 EOF
-  chmod +x "$BIN_DIR/briefing"
+  chmod +x "$tmpfile"
+
+  if [ -d "$target_dir" ] && [ -w "$target_dir" ]; then
+    mv "$tmpfile" "$target_path"
+    LAUNCHER_PATH="$target_path"
+    return
+  fi
+
+  if require_cmd sudo; then
+    sudo mkdir -p "$target_dir"
+    sudo install -m 0755 "$tmpfile" "$target_path"
+    rm -f "$tmpfile"
+    LAUNCHER_PATH="$target_path"
+    return
+  fi
+
+  rm -f "$tmpfile"
+  target_dir="$HOME/.local/bin"
+  target_path="$target_dir/briefing"
+  mkdir -p "$target_dir"
+  cat > "$target_path" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$VENV_DIR/bin/python" "$INSTALL_DIR/main.py" "\$@"
+EOF
+  chmod +x "$target_path"
+  LAUNCHER_PATH="$target_path"
 }
 
 ensure_path() {
-  export PATH="$BIN_DIR:$PATH"
+  local launcher_dir
+  launcher_dir="$(dirname "$LAUNCHER_PATH")"
+  export PATH="$launcher_dir:$PATH"
 
-  local line="export PATH=\"$BIN_DIR:\$PATH\""
+  local line="export PATH=\"$launcher_dir:\$PATH\""
   local profiles=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile")
 
   for profile in "${profiles[@]}"; do
@@ -167,8 +200,8 @@ ensure_path() {
 
 verify_install() {
   "$VENV_DIR/bin/python" -c "import sys; sys.path.insert(0, '$INSTALL_DIR'); import main" >/dev/null
-  if ! command -v briefing >/dev/null 2>&1; then
-    echo "Failed to resolve briefing in PATH after install."
+  if [ ! -x "$LAUNCHER_PATH" ]; then
+    echo "Launcher was not created: $LAUNCHER_PATH"
     exit 1
   fi
 }
@@ -176,6 +209,7 @@ verify_install() {
 print_done() {
   log "Installed successfully."
   echo
+  echo "Launcher: $LAUNCHER_PATH"
   echo "Run: briefing"
 }
 
