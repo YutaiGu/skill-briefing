@@ -1,10 +1,10 @@
 {
-  "UPDATE_LIMIT": 2,
+  "UPDATE_LIMIT": 3,
   "POOL_NUM": 1,
   "TRANSCRIBER_LIMIT": null,
-  "ENTRIES_LIMIT": 2,
+  "ENTRIES_LIMIT": 3,
   "SOURCE_URLS": [
-    "https://www.youtube.com/@Value-Investing/videos"
+    "https://www.youtube.com/@YouTube/videos"
   ],
   "whisper_model": "small"
 }
